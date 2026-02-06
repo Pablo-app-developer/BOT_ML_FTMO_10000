@@ -146,19 +146,25 @@ def main():
     eval_env = DummyVecEnv([lambda: FTMOTradingEnvV2(test_df)])
     
     # 3. Setup Model (PPO) with GPU
-    # ML Agent optimized hyperparameters
+    # ML Agent optimized hyperparameters for RTX 3050
+    # Larger batch size + Deeper network = Better GPU usage & Smarter model
+    policy_kwargs = dict(
+        net_arch=dict(pi=[512, 512, 256], vf=[512, 512, 256])
+    )
+    
     model = PPO(
         "MlpPolicy",
         train_env,
+        policy_kwargs=policy_kwargs,
         verbose=1,
         learning_rate=0.0003,
-        n_steps=2048,
-        batch_size=64,
+        n_steps=8192,       # Much longer rollout
+        batch_size=2048,    # Big batches for GPU
         gamma=0.99,
         gae_lambda=0.95,
         clip_range=0.2,
         ent_coef=0.01,
-        device="cuda" if torch.cuda.is_available() else "cpu",
+        device="cuda",      # Force CUDA
         tensorboard_log=LOG_DIR
     )
     
