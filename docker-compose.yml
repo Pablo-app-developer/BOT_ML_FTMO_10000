@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  ftmo-bot:
+    build: .
+    container_name: antigravity_ftmo_bot
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./shared:/app/shared
+      # Mount .env securely if needed, though env_file is preferred usually
+      # - ./.env:/app/.env 
+    env_file:
+      - .env
+    environment:
+      - ENVIRONMENT=production
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+    # Command to run the bot in "trade" mode or "loop" mode
+    # Assuming 'python main.py trade' is the entry point
+    command: python main.py trade
+    resources:
+      limits:
+        cpus: '1.0'
+        memory: 1024M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  # Optional: Monitoring or Database services can be added here
+  # e.g., PostgreSQL or Redis
