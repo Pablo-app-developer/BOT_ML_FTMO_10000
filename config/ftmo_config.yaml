@@ -1,0 +1,51 @@
+# 🏆 ANTIGRAVITY FTMO CHALLENGER CONFIGURATION
+# Project: 10k USD Challenge
+# Estrictamente diseñado para cumplir reglas de Prop Firm
+
+project:
+  name: "Antigravity FTMO 10k"
+  version: "2.0.0"
+  mode: "production"  # simulation | production
+
+account:
+  initial_balance: 10000.0  # $10k Account
+  currency: "USD"
+  leverage: 100  # Typical FTMO leverage for Forex/Crypto
+
+risk_management:
+  # ⚠️ FTMO HARD RULES (Do not touch unless you know exactly what you are doing)
+  max_daily_drawdown_pct: 0.045  # 4.5% (dejamos 0.5% de margen de seguridad del 5% real)
+  max_total_drawdown_pct: 0.09   # 9.0% (dejamos 1.0% de margen de seguridad del 10% real)
+  
+  # Operativa por Trade (Conservador para pasar el challenge seguro)
+  risk_per_trade_pct: 0.005      # 0.5% por operación (permite 9 racha de pérdidas seguidas antes del daily limit)
+  max_open_trades: 3             # Máximo 3 operaciones simultáneas
+  
+  # Protección
+  force_exit_on_daily_limit: true # Cerrar todo si tocamos el 4.5% de pérdida diaria
+  use_hard_stop_loss: true        # Siempre enviar SL al broker
+
+trading_strategy:
+  assets:
+    - symbol: "BTC-USD"
+      timeframe: "15m"  # Timeframe más estable para IA
+      ai_model: "ppo_btc_conservative_v1"
+      
+    - symbol: "ETH-USD"
+      timeframe: "15m"
+      ai_model: "ppo_eth_conservative_v1"
+      
+    - symbol: "SOL-USD"
+      timeframe: "15m"
+      ai_model: "ppo_sol_conservative_v1"
+
+  # Filtros de Entrada
+  filters:
+    min_volume_24h: 10000000 # 10M volumen mínimo
+    avoid_news_events: true  # Evitar trading en noticias de alto impacto (CPI, FOMC)
+
+system:
+  database_path: "data/ftmo_trading.db"
+  log_level: "INFO"
+  telegram_notifications: true
+  dashboard_port: 8501

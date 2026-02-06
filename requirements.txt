@@ -1,0 +1,11 @@
+gymnasium
+stable-baselines3[extra]
+pandas
+numpy<2.0.0
+yfinance
+shimmy
+torch
+optuna
+scikit-learn
+ta
+ccxt
