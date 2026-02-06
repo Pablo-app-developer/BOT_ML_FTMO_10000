@@ -13,18 +13,32 @@ class FTMOTradingEnvV2(gym.Env):
     """
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, df, initial_balance=10000, commission=0.0001, window_size=60):
+    def __init__(self, df, risk_config_path='agents/quant/risk_parameters.yaml', window_size=60):
         super(FTMOTradingEnvV2, self).__init__()
+        import yaml
+        import os
 
+        # Load Risk Config
+        if os.path.exists(risk_config_path):
+            with open(risk_config_path, 'r') as f:
+                self.risk_config = yaml.safe_load(f)
+        else:
+            # Fallback default
+            self.risk_config = {
+                'ftmo_limits': {'max_daily_loss_percent': 0.05, 'max_total_loss_percent': 0.10, 'profit_target_percent': 0.10},
+                'crypto_specifics': {'max_spread_tolerance_pips': 5.0}
+            }
+            
         self.df = df.reset_index(drop=True)
         self.window_size = window_size
-        self.initial_balance = initial_balance
-        self.commission = commission
+        self.initial_balance = self.risk_config['ftmo_limits'].get('account_size', 10000)
+        self.commission = 0.001  # 0.1% per trade (Taker)
+        self.spread_pct = 0.0002 # 0.02% simulated spread
         
-        # FTMO Rules
-        self.max_daily_loss_pct = 0.05
-        self.max_total_loss_pct = 0.10
-        self.profit_target_pct = 0.10
+        # FTMO Rules from YAML
+        self.max_daily_loss_pct = self.risk_config['ftmo_limits']['max_daily_loss_percent']
+        self.max_total_loss_pct = self.risk_config['ftmo_limits']['max_total_loss_percent']
+        self.profit_target_pct = self.risk_config['ftmo_limits']['profit_target_percent']
         
         self.action_space = spaces.Discrete(3)
         

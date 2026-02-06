@@ -22,6 +22,11 @@
 
 ## 💼 Account Parameters (Crypto Focus)
 
+**ULTIMATE GOAL: PASS FTMO CHALLENGE ($10k)**
+*   **Vehicle:** Crypto CFDs (BTCUSD, ETHUSD)
+*   **Why:** Linux/Automation stability vs Windows/MT5 complexity
+*   **Strategy:** High volatility capture with strict daily drawdown guards
+
 ```yaml
 account:
   initial_balance: 10000  # USD
@@ -31,7 +36,9 @@ account:
 risk_limits:
   max_daily_loss_pct: 0.05
   max_total_loss_pct: 0.10
-  profit_target_pct: 0.10
+  profit_target_pct: 0.10  # Phase 1 Target
+  profit_target_phase2: 0.05 # Phase 2 Target
+
   
 assets:
   primary: ["BTC/USD", "ETH/USD"]
