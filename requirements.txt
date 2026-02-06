@@ -9,3 +9,10 @@ optuna
 scikit-learn
 ta
 ccxt
+python-dotenv
+requests
+psutil
+watchdog
+apscheduler
+pydantic
+pytest
