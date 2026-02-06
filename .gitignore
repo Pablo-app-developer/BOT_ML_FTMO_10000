@@ -19,6 +19,16 @@ data/*.csv
 data/*.pkl
 data/demonstrations/
 
+# Shared resources (exclude large files, keep structure)
+shared/data/*
+!shared/data/.gitkeep
+shared/models/*
+!shared/models/.gitkeep
+shared/backtest/*
+!shared/backtest/.gitkeep
+shared/metrics/*
+!shared/metrics/.gitkeep
+
 # Models (too large for git)
 models/
 *.zip
