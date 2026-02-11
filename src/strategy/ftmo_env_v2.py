@@ -50,7 +50,8 @@ class FTMOTradingEnvV2(gym.Env):
         if not self.obs_cols:
              self.obs_cols = ['Close']
 
-        self.n_features = len(self.obs_cols) + 2
+        # +3 features: Balance Ratio, Position Ratio, Inactivity Ratio
+        self.n_features = len(self.obs_cols) + 3 
         
         self.observation_space = spaces.Box(
             low=-np.inf, high=np.inf, shape=(self.window_size, self.n_features), dtype=np.float32
@@ -83,6 +84,8 @@ class FTMOTradingEnvV2(gym.Env):
         self.total_trades = 0
         self.winning_trades = 0
         self.steps_held = 0
+        self.steps_since_trade = 0
+        self.highest_price = 0 
 
         return self._next_observation(), {}
 
@@ -92,7 +95,11 @@ class FTMOTradingEnvV2(gym.Env):
         balance_ratio = self.balance / self.initial_balance
         position_ratio = (self.shares_held * self.df.iloc[self.current_step]['Close']) / self.net_worth if self.net_worth > 0 else 0
         
-        account_obs = np.full((self.window_size, 2), [balance_ratio, position_ratio], dtype=np.float32)
+        # Normalize Inactivity: 0 to 1 (1 = Danger Zone)
+        inactivity_ratio = min(self.steps_since_trade / 96.0, 1.0)
+        
+        # Create augmented feature vector
+        account_obs = np.full((self.window_size, 3), [balance_ratio, position_ratio, inactivity_ratio], dtype=np.float32)
         
         obs = np.hstack((market_obs, account_obs))
         return np.nan_to_num(obs).astype(np.float32)
@@ -115,7 +122,9 @@ class FTMOTradingEnvV2(gym.Env):
                 self.balance -= amount
                 self.shares_held += shares_bought
                 self.entry_price = current_price
+                self.highest_price = current_price # Set peak
                 self.steps_held = 0
+                self.steps_since_trade = 0 # Reset inactivity
                 
         elif action == 2:  # Sell
             if self.shares_held > 0:
@@ -126,11 +135,65 @@ class FTMOTradingEnvV2(gym.Env):
                 self.shares_held = 0
                 
                 self.total_trades += 1
+                self.steps_since_trade = 0 # Reset inactivity
+                
                 if profit > 0:
                     self.winning_trades += 1
                     reward += 0.1  # Reward winning trades
                 else:
                     reward -= 0.05  # Small penalty for losing trades
+        
+        else: # HOLD (Action 0)
+            self.steps_since_trade += 1
+            
+            # 🚨 INACTION PENALTY
+            # If no trade for 24 hours (96 steps of 15m), apply small penalty
+            if self.steps_since_trade > 96:
+                reward -= 0.005
+        
+        # 🛡️ AUTOMATIC RISK MANAGEMENT (The "Safety Guard")
+        if self.shares_held > 0:
+            # Update Peak
+            if current_price > self.highest_price:
+                self.highest_price = current_price
+
+            current_value = self.shares_held * current_price
+            entry_value = self.shares_held * self.entry_price
+            pnl_pct = (current_value - entry_value) / entry_value
+            
+            # STOP LOSS (-2%) - Hard Safety Net
+            if pnl_pct <= -0.02:
+                self.balance += current_value * (1 - self.commission)
+                self.shares_held = 0
+                self.total_trades += 1
+                self.steps_since_trade = 0
+                reward -= 0.1
+            
+            # 🚀 TRAILING STOP LOGIC
+            # Activation: +1% Profit
+            # Distance: 0.5% from Peak
+            elif pnl_pct >= 0.01:
+                drop_from_peak = (current_price - self.highest_price) / self.highest_price
+                if drop_from_peak <= -0.005: # Dropped 0.5% from top
+                    # Force Sell (Lock Profit)
+                    self.balance += current_value * (1 - self.commission)
+                    self.shares_held = 0
+                    self.total_trades += 1
+                    self.winning_trades += 1
+                    self.steps_since_trade = 0
+                    reward += 0.5 # Success!
+                
+            # TIME LIMIT (Max Hold 12 hours)
+            elif self.steps_held > 48:
+                self.balance += current_value * (1 - self.commission)
+                self.shares_held = 0
+                self.total_trades += 1
+                self.steps_since_trade = 0
+                if pnl_pct > 0:
+                    self.winning_trades += 1
+                    reward += 0.1
+                else:
+                    reward -= 0.05
         
         # Update net worth
         self.net_worth = self.balance + (self.shares_held * current_price)
